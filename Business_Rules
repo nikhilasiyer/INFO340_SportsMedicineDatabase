@@ -6,8 +6,10 @@
 --etc
 
 --Logan's Business Rule
---This business rule restricts all incoming players to be at least 18 years of age if they play basketball
+/*
+This business rule restricts all incoming players to be at least 18 years of age if they play basketball
 CREATE FUNCTION fn_adults_only()
+*/
 
 RETURNS INT
 AS
@@ -32,8 +34,10 @@ BEGIN
   ADD CONSTRAINT ck_18older
   CHECK (dbo.fn_adults_only() = 0)
   
-  --Hannah's Buisness Rule
-  --This restricts all basketball players from being young than 17 years for the incoming season.  
+--Hannah's Buisness Rule
+/*
+This restricts all basketball players from being young than 17 years for the incoming season.  
+*/
 
 CREATE FUNCTION OnlyBasketball()
 RETURNS INT
@@ -87,6 +91,32 @@ END
 
 ALTER TABLE TREATMENT 
 ADD CONSTRAINT CK_AclInjury
-CHECK (dbo.ck_ACLInjury() = 0)
+CHECK (dbo.fn_ACLInjury() = 0)
 
+-- Nikhila's Business Rule
+/*
+Does not allow players who have had injuries within the past 2 months or 
+treatment within the last 4 months to play.
+*/
 
+-- User-Defined Function for Business Rule
+CREATE FUNCTION fn_InjuredPlayers
+RETURN INT
+AS
+BEGIN
+	DECLARE @Ret INT = 0
+	IF EXISTS(SELECT *
+		FROM PLAYER P
+			JOIN PLAYER_INJURY PI ON P.PlayerID = PI.PlayerID
+			JOIN INJURY I ON PI.InjuryID = I.InjuryID
+			JOIN INJURY_TREATMENT IT ON I.InjuryID = IT.InjuryID
+		WHERE ((GETDATE() AS DATE) - PI.InjuryDate) >= 0.16 --2 months of a year
+			AND ((GETDATE() AS DATE) - IT.TreatmentDate) >= 0.33 --4 months of a year
+	)
+SET @Ret = 1
+RETURN @Ret
+END
+
+ALTER TABLE PLAYER 
+ADD CONSTRAINT ck_RecentInjury
+CHECK (dbo.fn_InjuredPlayers() = 0)
